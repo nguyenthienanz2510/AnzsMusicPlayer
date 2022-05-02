@@ -5,10 +5,10 @@
  * 4. CD rotate -> ok
  * 5. Next/ Prev -> ok
  * 6. Random -> ok
- * 7. Next/ Repeat when ended
- * 8. Active song
- * 9. Scroll active song into view
- * 10. Play song when click
+ * 7. Next/ Repeat when ended -> ok
+ * 8. Active song -> ok
+ * 9. Scroll active song into view  -> ok
+ * 10. Play song when click -> ok
  */
 
 const $ = document.querySelector.bind(document);
@@ -24,11 +24,14 @@ const progress = $("#progress");
 const nextBtn = $(".btn-next");
 const prevBtn = $(".btn-prev");
 const randomBtn = $(".btn-random");
+const repeatBtn = $(".btn-repeat");
+const playlist = $(".playlist");
 
 const app = {
   currentIndex: 0,
   isPlaying: false,
   isRandom: false,
+  isRepeat: false,
   songs: [
     {
       name: "They said",
@@ -87,30 +90,10 @@ const app = {
     {
       name: "Despacito",
       singer: "Luis Fonsi ft. Daddy Yankee",
-      path: "./assets/music/Song10_Despacito.mp33",
+      path: "./assets/music/Song10_Despacito.mp3",
       image: "./assets/images/img10_Despacito.jpg",
     },
   ],
-  render: function () {
-    const htmls = this.songs.map(function (song) {
-      return `
-        <div class="song">
-          <div
-            class="song__thumb"
-            style="background-image: url('${song.image}')"
-          ></div>
-          <div class="song__body">
-            <h3 class="song__body-title">${song.name}</h3>
-            <p class="song__body-author">${song.singer}</p>
-          </div>
-          <div class="song__option">
-            <i class="fas fa-ellipsis-h"></i>
-          </div>
-        </div>
-        `;
-    });
-    $(".playlist").innerHTML = htmls.join("");
-  },
   defineProperties: function () {
     Object.defineProperty(this, "currentSong", {
       get: function () {
@@ -145,18 +128,21 @@ const app = {
         audio.play();
       }
     };
+
     // When song playing
     audio.onplay = function () {
       _this.isPlaying = true;
       player.classList.add("playing");
       cdThumbAnimate.play();
     };
+
     // When dong pause
     audio.onpause = function () {
       _this.isPlaying = false;
       player.classList.remove("playing");
       cdThumbAnimate.pause();
     };
+
     // when scroll time song
     audio.ontimeupdate = function () {
       if (audio.duration) {
@@ -166,34 +152,85 @@ const app = {
         progress.value = progressPercent;
       }
     };
+
     // when seek song
     progress.onchange = function (event) {
       const seekTime = (event.target.value * audio.duration) / 100;
       audio.currentTime = seekTime;
     };
+
     // when next song
     nextBtn.onclick = function () {
       if (_this.isRandom) {
         _this.playRandomSong();
       } else {
         _this.nextSong();
-        audio.play();
       }
+      audio.play();
+      _this.render();
+      _this.scrollToActiveSong();
     };
+
     // when prev song
     prevBtn.onclick = function () {
       if (_this.isRandom) {
         _this.playRandomSong();
       } else {
         _this.prevSong();
-        audio.play();
       }
+      audio.play();
+      _this.render();
+      _this.scrollToActiveSong();
     };
+
     // when on/ off random
-    randomBtn.onclick = function (event) {
+    randomBtn.onclick = function () {
       _this.isRandom = !_this.isRandom;
       randomBtn.classList.toggle("active", _this.isRandom);
     };
+
+    // when on/ off repeat button
+    repeatBtn.onclick = function () {
+      _this.isRepeat = !_this.isRepeat;
+      repeatBtn.classList.toggle("active", _this.isRepeat);
+    };
+
+    // change song when ended song
+    audio.onended = function () {
+      if (_this.isRepeat) {
+        audio.play();
+      } else {
+        nextBtn.click();
+      }
+    };
+
+    // chose a song from playlist
+    playlist.onclick = function (event) {
+      const songNode = event.target.closest(".song:not(.active)");
+      const songOptionNode = event.target.closest(".song__option");
+      if (songNode || songOptionNode) {
+        // handle when chose song
+        if (songNode) {
+          _this.currentIndex = songNode.dataset.index * 1;
+          _this.loadCurrentSong();
+          _this.render();
+          audio.play();
+        }
+        // handle when lick option song
+        if (songOptionNode) {
+          //
+        }
+      }
+    };
+  },
+  // scroll To Active Song
+  scrollToActiveSong: function () {
+    setTimeout(function () {
+      $(".song.active").scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }, 300);
   },
   // load current song
   loadCurrentSong: function () {
@@ -209,6 +246,7 @@ const app = {
       this.currentIndex = 0;
     }
     this.loadCurrentSong();
+    console.log(this.currentIndex);
   },
   // prev Song
   prevSong: function () {
@@ -217,6 +255,7 @@ const app = {
       this.currentIndex = this.songs.length - 1;
     }
     this.loadCurrentSong();
+    console.log(this.currentIndex);
   },
   // random song
   playRandomSong: function () {
@@ -226,6 +265,29 @@ const app = {
     } while (newIndex == this.songs.length);
     this.currentIndex = newIndex;
     this.loadCurrentSong();
+  },
+  render: function () {
+    _this = this;
+    const htmls = this.songs.map(function (song, index) {
+      return `
+        <div class="song ${
+          index == _this.currentIndex ? "active" : ""
+        }" data-index="${index}">
+          <div
+            class="song__thumb"
+            style="background-image: url('${song.image}')"
+          ></div>
+          <div class="song__body">
+            <h3 class="song__body-title">${song.name}</h3>
+            <p class="song__body-author">${song.singer}</p>
+          </div>
+          <div class="song__option">
+            <i class="fas fa-ellipsis-h"></i>
+          </div>
+        </div>
+        `;
+    });
+    playlist.innerHTML = htmls.join("");
   },
   start: function () {
     // define properties for project
